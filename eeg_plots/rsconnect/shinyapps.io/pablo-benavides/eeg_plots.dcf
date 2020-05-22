@@ -1,0 +1,10 @@
+name: eeg_plots
+title:
+username:
+account: pablo-benavides
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2024703
+bundleId: 3029761
+url: https://pablo-benavides.shinyapps.io/eeg_plots/
+when: 1587175526.04817
