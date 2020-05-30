@@ -1,15 +1,33 @@
 # Area under a curve
 
+
+# pkgs --------------------------------------------------------------------
+
+library(easypackages)
+libraries("tidyverse")
+
+# Tidy data regarding AUC points
+source("eeg_plots/scripts/latevolts_auc_tidy.R",
+       encoding = "UTF-8")
+
+# df_norm
+df_norm <- read_csv("eeg_plots/data/df_norm.csv")
+
+
 gg_df <- df_norm %>%
-  # filter(Sujeto %in% c("ADA8M")) %>% 
+  filter(Electrodo == "Pz") %>% 
   group_by(t, Grupo,Condición,
-           Evaluación, Electrodo) %>% 
+           Evaluación, Sujeto) %>% 
   summarise(Amplitud = mean(value)) %>%
   filter(Condición == "Alegría", 
-         Electrodo == "Pz",
          Grupo == "Grupo emoción") %>% 
   mutate(t_eval = str_c(t, Evaluación, 
-                        sep = "_"))
+                        sep = "_")) %>% 
+  left_join(df, by = c("Sujeto" = "código",
+                       "Grupo" = "grupo",
+                       "Condición" = "Condición",
+                       "Evaluación" = "Evaluación"
+                       ))
 
 gg_area_pre <- gg_df %>% 
   filter(t %in% seq(478,678, by = 2) &

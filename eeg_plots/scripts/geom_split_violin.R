@@ -1,3 +1,4 @@
+library(ggplot2)
 # geom_split_violin ####
 GeomSplitViolin <- ggproto("GeomSplitViolin", GeomViolin, 
                            draw_group = function(self, data, ..., draw_quantiles = NULL) {

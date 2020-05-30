@@ -6,8 +6,6 @@
 # pablo-benavides.shinyapps.io/eeg_plots
 # 
 
-
-
 # 1. load required packages ####
 
 library("shiny")
@@ -17,13 +15,18 @@ library("tidyverse")
 library("plotly")
 library("latex2exp")
 library("gghighlight")
+library("widgetframe")
+library("DescTools")
 
+# sourcing other scripts --------------------------------------------------
 
-source("scripts prueba/findpeaks.R")
-source("scripts prueba/geom_split_violin.R")
+source("scripts/findpeaks.R") # function to find local peaks
+source("scripts/geom_split_violin.R")
+source("scripts/latevolts_auc_tidy.R",
+       encoding = "UTF-8") # data preprocessing for AUC
 
+# load data ---------------------------------------------------------------
 
-# load data ####
 # Tab PREs
 df_norm <- read_csv("data/df_norm.csv")
 
@@ -37,14 +40,16 @@ participantes <- df_norm %>%
     select(Sujeto, Grupo) %>% 
     distinct(Sujeto, .keep_all = T)
 
+# Tab AUC
 
 
 # Tab Resultados conductuales
+
 # oddball <- read_csv("data/oddball.csv")
 # pre_post <- read_csv("data/pre_post_sin_eeg.csv")
 # bd_entrenamiento <- read_csv("data/bd_entrenamiento_emocion.csv")
 
-# Tab latevolts
+# Tab Amplitudes y latencias
 
 latevolts <- read_csv("data/latevolts.csv",
                       locale = locale(encoding = "ISO-8859-1"))%>% 
@@ -61,7 +66,8 @@ latevolts <- read_csv("data/latevolts.csv",
 colores_prepost <- c("PRE"= "turquoise1",
                      "POST"="orchid1")
 
-# Define UI for application ####
+# Define UI for application -----------------------------------------------
+
 ui <- fluidPage( theme = shinytheme("cerulean"),
                  
                  # Application title
@@ -137,7 +143,7 @@ ui <- fluidPage( theme = shinytheme("cerulean"),
                               mainPanel(
                                   splitLayout(cellWidths = c("70%", "30%"),
                                       plotlyOutput("auc_plot"),
-                                      htmlOutput("auc"),
+                                      tableOutput("auc"),
                                       tags$head(tags$style("#auc{color: black;
                                     font-size: 20px;
                                     font-style: bold;
@@ -191,7 +197,8 @@ ui <- fluidPage( theme = shinytheme("cerulean"),
                  
 )
 
-# Define server logic ####
+
+# Define server logic -----------------------------------------------------
 
 server <- function(input, output) {
     Data <- reactive({
@@ -222,20 +229,48 @@ server <- function(input, output) {
     gg_df_auc <- reactive({
         
         df_norm %>%
-            filter(Sujeto == input$partic_auc) %>% 
-            group_by(t, Grupo,Condición,
-                     Evaluación, Electrodo) %>% 
-            summarise(Amplitud = mean(value)) %>%
-            filter(Condición == input$cond_auc, 
+            filter(Sujeto == input$partic_auc,
                    Electrodo == "Pz") %>% 
+            group_by(t, Grupo,Condición,
+                     Evaluación) %>% 
+            summarise(Amplitud = mean(value)) %>%
+            filter(Condición == input$cond_auc) %>% 
             mutate(t_eval = str_c(t, Evaluación, 
                                   sep = "_"))
     })
     
-    gg_area_auc <- reactive({
+    auc_data <- reactive({
+        df_auc %>% 
+            filter(código == input$partic_auc,
+                   Condición == input$cond_auc)
+    })
+    
+    auc_data_pre <- reactive({
+        auc_data() %>% 
+            filter(Evaluación == "PRE") %>% 
+            pull(li)
+    }) 
+    
+    auc_data_post <- reactive({
+        auc_data() %>% 
+            filter(Evaluación == "POST") %>% 
+            pull(li) 
+    }) 
+    
+    gg_area_auc_pre <- reactive({
         gg_df_auc() %>% 
-            filter(t %in% seq(434,434+200, by = 2)&
+            filter(t %in% seq(auc_data_pre(),
+                              auc_data_pre() + 200,
+                              by = 2)&
                        Evaluación == "PRE")
+    })
+    
+    gg_area_auc_post <- reactive({
+        gg_df_auc() %>% 
+            filter(t %in% seq(auc_data_post(),
+                              auc_data_post() + 200,
+                              by = 2)&
+                       Evaluación == "POST")
     })
     
     picos_df <- reactive({
@@ -348,17 +383,26 @@ server <- function(input, output) {
                                         "POST"="orchid2"),
                                name="")
         ggplotly( gg + geom_line(size = 1) + 
-                      geom_area(data = gg_area_auc(), 
+                      geom_area(data = gg_area_auc_pre(), 
                                 aes(x = t, y = Amplitud),
-                                fill = "turquoise3", alpha = 0.5)
+                                fill = "turquoise3", alpha = 0.4) +
+                      geom_area(data = gg_area_auc_post(), 
+                                aes(x = t, y = Amplitud),
+                                fill = "orchid2", alpha = 0.4)
         )
     })
     
-    output$auc <- renderText({
-        auc <- DescTools::AUC(
-            x = gg_area_auc()$t, y =gg_area_auc()$Amplitud,
+    output$auc <- renderTable({
+        auc_pre <- DescTools::AUC(
+            x = gg_area_auc_pre()$t, y =gg_area_auc_pre()$Amplitud,
             absolutearea = TRUE)
-        paste("El área bajo la curva es: ","<br>", round(auc,2))
+        auc_post <- DescTools::AUC(
+            x = gg_area_auc_post()$t, y =gg_area_auc_post()$Amplitud,
+            absolutearea = TRUE)
+        tibble(Evaluación = c("PRE","POST"),
+               Área = c(round(auc_pre,2),round(auc_post,2))
+               )
+        # paste("El área bajo la curva es: ","<br>", round(auc,2))
     })
 
     output$picos_pre <- renderTable({
