@@ -395,10 +395,12 @@ server <- function(input, output) {
     output$auc <- renderTable({
         auc_pre <- DescTools::AUC(
             x = gg_area_auc_pre()$t, y =gg_area_auc_pre()$Amplitud,
-            absolutearea = TRUE)
+            absolutearea = TRUE,
+            method = "spline")
         auc_post <- DescTools::AUC(
             x = gg_area_auc_post()$t, y =gg_area_auc_post()$Amplitud,
-            absolutearea = TRUE)
+            absolutearea = TRUE,
+            method = "spline")
         tibble(Evaluación = c("PRE","POST"),
                Área = c(round(auc_pre,2),round(auc_post,2))
                )

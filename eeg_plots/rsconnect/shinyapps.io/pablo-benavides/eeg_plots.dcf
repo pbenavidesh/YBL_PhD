@@ -5,6 +5,6 @@ account: pablo-benavides
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2024703
-bundleId: 3206871
+bundleId: 3216165
 url: https://pablo-benavides.shinyapps.io/eeg_plots/
-when: 1590800385.38204
+when: 1591052797.05899
