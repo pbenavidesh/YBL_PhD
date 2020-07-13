@@ -5,7 +5,7 @@
 
 # 0. Carga de paqueterías ####
 library("easypackages")
-packages("tidyverse","plotly","gghighlight")
+packages("tidyverse","plotly","gghighlight", "patchwork")
 
 # 1. Carga de archivos ####
 var_names <- read_csv("./PCA/nombres_variables.csv",
@@ -185,29 +185,29 @@ df_plots %>%
   coord_cartesian(ylim = c(-10,30))
   
 
-for (i in seq_along(levels(df_plots$Grupo))){
-  for (j in seq_along(levels(df_plots$Condición))){
-    df_plots %>% 
-      filter(Grupo == levels(Grupo)[i] &
-               Condición == levels(Condición)[j]) %>% 
-      ggplot(aes(x = t, y = media, color = Evaluación)) +
-      geom_line() + facet_wrap(~ Electrodo) + 
-      theme(text = element_text(family = "serif"),
-            strip.background = element_blank(),
-            strip.placement = "outside",
-            axis.title = element_blank(),
-            axis.ticks = element_blank(),
-            axis.text = element_blank(),
-            panel.background = element_blank(),
-            panel.grid = element_blank()
-      ) + ggtitle(paste()) 
-  }
-}
+# for (i in seq_along(levels(df_plots$Grupo))){
+#   for (j in seq_along(levels(df_plots$Condición))){
+#     df_plots %>% 
+#       filter(Grupo == levels(Grupo)[i] &
+#                Condición == levels(Condición)[j]) %>% 
+#       ggplot(aes(x = t, y = media, color = Evaluación)) +
+#       geom_line() + facet_wrap(~ Electrodo) + 
+#       theme(text = element_text(family = "serif"),
+#             strip.background = element_blank(),
+#             strip.placement = "outside",
+#             axis.title = element_blank(),
+#             axis.ticks = element_blank(),
+#             axis.text = element_blank(),
+#             panel.background = element_blank(),
+#             panel.grid = element_blank()
+#       ) + ggtitle(paste()) 
+#   }
+# }
 
 
 
 
-# Plot function
+# Plot functions ----------------------------------------------------------
 
 PREs_plot <- function(grupo,condición){
   p <- df_plots %>% 
@@ -222,11 +222,15 @@ PREs_plot <- function(grupo,condición){
           axis.ticks = element_blank(),
           axis.text = element_blank(),
           panel.background = element_blank(),
-          panel.grid = element_blank()
+          panel.grid = element_blank(),
+          strip.text.x = element_text(size = 5),
+          legend.text = element_text(size = 7),
+          legend.title = element_text(size = 8)
           ) +
     ggtitle(paste("Distribución de los PREs del", grupo, "en la condición",
                   condición))
-  ggplotly(p)
+  p
+  # ggplotly(p)
 }
 
 
@@ -235,50 +239,81 @@ plot_variants <- expand.grid(levels(df_plots$Grupo),
  )
 names(plot_variants) <- c("Grupo","Condición")
 
-# Generar todas las gráficas
+# Generar todas las gráficas simplemente en facetas
 
 plots_pres <- map2(plot_variants$Grupo, plot_variants$Condición,
                    PREs_plot)
 
-guardar <- function(nombre, width = 200, height = 100,
-                    units ="mm"){
-  ggsave(nombre,
-         width = width,height = height,units = units)
-}
-
-paths <- str_c(plot_variants %>% unite("plot") %>% pull(),".jpeg")
+paths <- str_c(plot_variants %>% unite("plot") %>% pull(),".png")
 
 
-pwalk(list(paths, plots_pres), ggsave)
+pwalk(list(paths, plots_pres), ggsave, 
+      height = 100, width = 200, units = "mm")
 
 
-# plots <- mtcars %>% 
-#   split(.$cyl) %>% 
-#   map(~ggplot(., aes(mpg, wt)) + geom_point())
-# paths <- stringr::str_c(names(plots), ".pdf")
+# plots_pres[[1]]
 
-
-plots_pres[[1]]
-
-# Siempre no se necesitó esto ####
+# Para graficarlo en el orden que se muestran en el EEG ####
 PREs_plot2 <- function(grupo,condición,electrodos){
   p <- df_plots %>% 
+    mutate(Electrodo = fct_relevel(Electrodo,"Fpz", 
+                                   "F3","Fz","F4",
+                                   "T3","C3","Cz","C4","T4",
+                                   "T5","P3","Pz","P4","T6",
+                                   "O1","O2")) %>% 
     filter(Grupo == grupo &
              Condición == condición &
              Electrodo %in% electrodos) %>% 
     ggplot(aes(x = t, y = media, color = Evaluación)) +
-    geom_line() + facet_wrap(~ Electrodo, nrow = 1, strip.position = "bottom") +
+    geom_line(size = 0.6) + facet_wrap(~ Electrodo, nrow = 1) +
     theme_void() + 
-    theme(legend.position = "none")+
-    coord_cartesian(ylim = c(-10,30))
+    scale_color_manual(values=c("PRE"= "turquoise3",
+                                "POST"="orchid2")
+                       ) +
+    theme(text = element_text(family = "serif"),
+          strip.background = element_blank(),
+          strip.placement = "outside",
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text = element_blank(),
+          panel.background = element_blank(),
+          panel.grid = element_blank(),
+          strip.text.x = element_text(size = 7, face = "bold"),
+          legend.text = element_text(size = 7),
+          legend.title = element_text(size = 8)
+    ) +
+    # theme(legend.position = "none")+
+    coord_cartesian(ylim = c(-20,30))
   p
 }
 
-p1 <- PREs_plot2("Grupo emoción","Alegría",c("Fpz"))
-p2 <- PREs_plot2("Grupo emoción","Alegría",c("F3","Fz","F4"))
-p3 <- PREs_plot2("Grupo emoción","Alegría",c("T3","C3","Cz","C4","T4"))
+PREs_plot3 <- function(grupo, condición){
+  p1 <- PREs_plot2(grupo, condición,c("Fpz"))
+  p2a <- PREs_plot2(grupo, condición,c("F3"))
+  p2b <- PREs_plot2(grupo, condición,c("Fz"))
+  p2c <- PREs_plot2(grupo, condición,c("F4"))
+  p3 <- PREs_plot2(grupo, condición,c("T3","C3","Cz","C4","T4"))
+  p4 <- PREs_plot2(grupo, condición,c("T5","P3","Pz","P4","T6"))
+  p5 <- PREs_plot2(grupo, condición,c("O1"))
+  p6 <- PREs_plot2(grupo, condición,c("O2"))
+  
+  (plot_spacer() | plot_spacer() | p1 | plot_spacer() | plot_spacer() )/ 
+    (plot_spacer() | p2a | p2b | p2c | plot_spacer()) /
+    (p3)/ (p4) /
+    (plot_spacer() | p5 | plot_spacer() | p6 | plot_spacer()) +
+    plot_layout(guides = "collect") + 
+    plot_annotation(title = paste("Distribución de los PREs del", 
+                                  grupo,
+                                  "en la condición", condición))
+  
+}
 
-(plot_spacer() | plot_spacer() | p1 | plot_spacer() | plot_spacer() )/ 
-  (plot_spacer() | p2 | plot_spacer()) /
-  (p3)
+# PREs_plot3("Grupo emoción", "Alegría")
+# 
+# ggsave("prueba.png", height = 100, width = 200, units = "mm")
 
+plots_pres2 <- map2(plot_variants$Grupo, plot_variants$Condición,
+                   PREs_plot3)
+
+pwalk(list(paths, plots_pres2), ggsave, 
+      height = 100, width = 200, units = "mm")
