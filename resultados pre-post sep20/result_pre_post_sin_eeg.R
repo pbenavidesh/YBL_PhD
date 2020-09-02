@@ -36,9 +36,18 @@ df_tidy <- df %>%
 
 # Analysis ----------------------------------------------------------------
 
+# To get how many participants are in each group
+n_grupos <- df_tidy %>% 
+  group_by(Grupo) %>% 
+  distinct(Niño) %>% 
+  summarise(n = n())
+
+# Export to csv the summary of type of answer vs. 
 df_tidy %>% 
-  mutate(correcto = if_else(resultado == "Acierto",1,0)) %>%
-  filter(`pre/post`== "Post") %>% 
-  group_by(`pre/post`,Imagen,tipo,emocion) %>% 
-  summarise(n = mean(correcto)) %>% 
-  arrange(n)
+  group_by(Grupo, `pre/post`, tipo, Imagen, emocion, resultado) %>% 
+  summarise(resultados = n()) %>% 
+  left_join(n_grupos) %>% 
+  mutate(`%` = resultados / n) %>% 
+  select(-n) %>% 
+  write_excel_csv("aciertos_errores.csv")
+
