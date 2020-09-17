@@ -1,12 +1,14 @@
 # Gráficas y análisis estadístico Doctorado YBL
 
-# Carga de paqueterías ####
+# pkgs --------------------------------------------------------------------
+
 library(easypackages)
 libraries("tidyverse","ggpubr","latex2exp","scales", "gghighlight")
 
 source("./oddball/geom_split_violin.R")
 
-# Función para seleccionar variables de un df "varlist" ####
+# Función para seleccionar variables de un df "varlist" -------------------
+
 varlist <- function (df=NULL,type=c("numeric","factor",
                                     "character"),
                      pattern="", exclude=NULL) {
@@ -22,10 +24,12 @@ varlist <- function (df=NULL,type=c("numeric","factor",
   }  
   vars[(!vars %in% exclude) & grepl(vars,pattern=pattern)]
 }
-# 0. Formato básico para todas las gráficas ####
+
+# 0. Formato básico para todas las gráficas -------------------------------
+
 # Tipografía y tamaño de letra
 g <- theme(text = element_text(family = "serif",
-                                        size = 12))
+                                        size = 16))
 # colores para evaluación pre y post
 colores_prepost <- c("Pre"= "turquoise1",
                               "Post"="orchid1")
@@ -37,7 +41,7 @@ point <- function(width = 0.5){
 }
 # para agregar el tamaño de la leyenda
 tema <- theme(legend.key.size = unit(0.2, "cm"), 
-        legend.text = element_text(size = 8))  
+        legend.text = element_text(size = 12))  
 # para agregar mediana a la gráfica
 mediana <- stat_summary(fun = median, geom = "errorbar", 
                aes(ymax = ..y.., ymin = ..y..),
@@ -56,8 +60,9 @@ guardar <- function(nombre, width = 200, height = 100,
   ggsave(nombre,
          width = width,height = height,units = units)
 }
- 
-# 1. a) Limpieza de datos oddball ####
+
+# 1. a) Limpieza de datos oddball -----------------------------------------
+
 df <- read_csv("./oddball/oddball.csv", 
                locale = locale(encoding = "ISO-8859-1")) 
 # Cambiar el texto
@@ -357,17 +362,17 @@ bd_train <- bd_train %>%
 
 # Solo los datos de películas y SSIS
 pelis <- bd_train %>% 
-  select(Código, Grupo, contains("Peliculas"),SSIS_Pre,SSIS_Post)
+  select(Código, Grupo, contains("Peliculas"),SSIS_Pre,SSIS_Post,
+         `Emo peli_Pre`,`Emo peli_Post`)
 
 #Sin considerar niño outlier EDC10M
-pelis <- pelis %>% 
-  filter(Código != "EDC10M")
+# pelis <- pelis %>% 
+#   filter(Código != "EDC10M")
 
 pelis_long <- pelis %>% 
   mutate(Peliculas_Pre = Peliculas_Pre * 100,
          Peliculas_Post = Peliculas_Post * 100) %>% 
-  pivot_longer(cols = c(Peliculas_Pre, Peliculas_Post,
-                        SSIS_Pre, SSIS_Post), 
+  pivot_longer(cols = c(Peliculas_Pre:`Emo peli_Post`), 
                names_to = "pre.post", values_to = "valor") %>% 
   separate(pre.post, into = c("Tipo","pre.post"), sep = "_") %>% 
   mutate(pre.post = factor(pre.post, levels = c("Pre","Post"))) %>% 
@@ -404,7 +409,14 @@ gg_peli(graf = "SSIS") + g +
 
 guardar("./películas/SSIS.jpeg")
 
+#   3. b.iii) Gráficas de Emo pelis ####
 
+gg_peli(graf = "Emo peli") + g + 
+  geom_split_violin(size = 0.6) +  
+  point() + mediana + prom() + ylab("Puntuación") +
+  tema
+
+guardar("./películas/Emo pelis.jpeg")
 
 # 4. a) Limpieza Subescalas de SSIS ####
 SSIS <- bd_train %>%
