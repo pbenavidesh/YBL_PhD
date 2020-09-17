@@ -413,7 +413,7 @@ guardar("./películas/SSIS.jpeg")
 
 gg_peli(graf = "Emo peli") + g + 
   geom_split_violin(size = 0.6) +  
-  point() + mediana + prom() + ylab("Puntuación") +
+  point() + mediana + prom() + ylab("%") +
   tema
 
 guardar("./películas/Emo pelis.jpeg")
