@@ -71,8 +71,8 @@ df <- df %>%
          pre.post = `pre/post`) %>%
   mutate(Grupo = 
            str_replace_all(Grupo,
-                           c("Grupo emoción"="Emoción",
-                             "Grupo identidad"="Identidad")),
+                           c("Grupo emoción"   = "Emoción",
+                             "Grupo identidad" = "Identidad")),
          Grupo = factor(Grupo, levels = c("Identidad",
                                           "Emoción")),
          pre.post = factor(pre.post, levels = c("Pre",
@@ -89,8 +89,13 @@ df <- df %>%
                              levels = c("Identidad-Pre",
                                         "Emoción-Pre",
                                         "Identidad-Post",
-                                        "Emoción-Post"))) %>% 
-  as_tibble()
+                                        "Emoción-Post")),
+         Tipo_error = case_when(
+           Error == 0                         ~ "Acierto",
+           Error == 100 & is.na(Respuesta.rt) ~ "Omisión",
+           TRUE                               ~ "Comisión"
+         )
+  )
 
 
 df_medias <- df %>%
@@ -98,7 +103,7 @@ df_medias <- df %>%
   group_by(pre.post,Grupo,Actividad,Participante) %>%
   summarise(RC = mean(`Resp correcta`), 
             Tiempo_reaccion = 
-              mean(`Tiempo respuesta`, na.rm = T)) %>% 
+              mean(`Tiempo respuesta`, na.rm = TRUE)) %>% 
   mutate(T_reaccion_ms = Tiempo_reaccion * 1000,
          grupo_eval = factor(str_c(as.character(Grupo),
                                    as.character(pre.post),
@@ -107,6 +112,60 @@ df_medias <- df %>%
                                         "Emoción-Pre",
                                         "Identidad-Post",
                                         "Emoción-Post")))
+
+df_medias_errores <- df %>% 
+  group_by(pre.post, Grupo, Actividad, 
+           Participante, frecuente.infrecuente, 
+           Tipo_error) %>%
+  summarise(RC  = mean(`Resp correcta`),
+            n   = n(),
+            .groups = "drop_last") %>% 
+  mutate(grupo_eval = factor(str_c(as.character(Grupo),
+                                   as.character(pre.post),
+                                   sep = "-"),
+                             levels = c("Identidad-Pre",
+                                        "Emoción-Pre",
+                                        "Identidad-Post",
+                                        "Emoción-Post")),
+         pct = n / sum(n) * 100
+  )
+
+df_medias_errores %>% 
+  select(-c(RC, n)) %>%
+  pivot_wider(
+    names_from  = Tipo_error,
+    values_from = pct
+  ) %>% 
+  mutate_at(.vars = c("Acierto", "Comisión", "Omisión"),
+            .funs = str_replace_na, replacement = 0)
+
+df_medias_errores %>% 
+  ggplot(aes(x = Actividad, y = RC, 
+             fill = Tipo_error, group = pre.post)) +
+  geom_bar(position = "fill", stat = "identity") +
+  facet_wrap(~ Grupo)
+
+# % de aciertos y errores por grupo, actividad, frec/infrec
+df_medias_errores %>% 
+  group_by(pre.post, Grupo, Actividad, 
+           frecuente.infrecuente, Tipo_error) %>% 
+  summarise(pct = mean(pct)) %>% 
+  ggplot(aes(x = pre.post, y = pct,
+             fill = Tipo_error)) +
+  geom_bar(position = "stack", stat = "identity") +
+  facet_grid(Grupo ~ Actividad + frecuente.infrecuente)
+
+df_medias_errores %>% 
+  filter(Tipo_error != "Acierto") %>%
+  ggplot(aes(x = Actividad, y = pct, fill = pre.post)) +
+  facet_grid(Tipo_error ~ Grupo, switch = "both") +
+  xlab("") + theme_classic() + ylab("%") +
+  geom_split_violin(size = 0.6) + g +
+  scale_fill_manual(values= colores_prepost, name="") +
+  theme(strip.background = element_blank(),
+        strip.placement = "outside") +
+  point(width = 0.5) + tema + mediana + prom(width = 0.5)
+
 
 # df_medias_globales <- df_medias %>% 
 #   group_by(pre.post,Grupo,Actividad) %>% 
