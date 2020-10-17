@@ -264,6 +264,8 @@ eeg_medias_id <- eeg %>%
           mem_id_RC=mean(Memoria_identidad_RC)*100,
           mem_id_TR=mean(Memoria_identidad_TR,na.rm = T))
 
+# Errores
+
 eeg_errores <- eeg %>% 
   pivot_longer(
     cols      = starts_with("Tipo"),
@@ -277,7 +279,7 @@ eeg_errores <- eeg %>%
       str_detect(Tarea, "identidad") ~ "N/A",
       str_starts(Tarea, "emp")       ~ as.character(emocion.emp),
       TRUE                           ~ as.character(emocion.mem)
-      ) %>% as_factor()
+      ) %>% factor(levels = c("Alegría", "Tristeza", "Enojo", "N/A"))
   )
 
 eeg_errores_medias <-  eeg_errores %>% 
@@ -289,6 +291,49 @@ eeg_errores_medias <-  eeg_errores %>%
   mutate(
     pct = n / sum(n) * 100
   )
+
+# Gráficas
+
+eeg_errores_emo_plot <- function(tarea){
+  eeg_errores_medias %>% 
+    filter(Tipo_error != "Acierto",
+           Tarea == tarea) %>%
+    ggplot(aes(x = Emoción, y = pct, fill = pre.post)) +
+    facet_grid(Tipo_error ~ Grupo, switch = "both") +
+    xlab("") + theme_classic() + ylab("%") +
+    geom_split_violin(size = 0.6) + g +
+    scale_fill_manual(values= colores_prepost, name="") +
+    theme(strip.background = element_blank(),
+          strip.placement = "outside") +
+    point(width = 0.5) + tema + mediana + prom(width = 0.5) +
+    annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)
+}
+
+eeg_errores_id_plot <- function(tarea){
+  eeg_errores_medias %>% 
+    filter(Tipo_error != "Acierto",
+           Tarea == tarea) %>%
+    ggplot(aes(x = Grupo, y = pct, fill = pre.post)) +
+    facet_grid(vars(Tipo_error), switch = "both") +
+    xlab("") + theme_classic() + ylab("%") +
+    geom_split_violin(size = 0.6) + g +
+    scale_fill_manual(values= colores_prepost, name="") +
+    theme(strip.background = element_blank(),
+          strip.placement = "outside") +
+    point(width = 0.5) + tema + mediana + prom(width = 0.5) +
+    annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)
+}
+# Emoción
+eeg_errores_emo_plot("emp emoción")
+guardar("./pre post sin eeg/emp_emocion_errores.jpeg")
+eeg_errores_emo_plot("mem emoción")
+guardar("./pre post sin eeg/mem_emocion_errores.jpeg")
+
+# Identidad
+eeg_errores_id_plot("emp identidad")
+guardar("./pre post sin eeg/emp_identidad_errores.jpeg")
+eeg_errores_id_plot("mem identidad")
+guardar("./pre post sin eeg/mem_identidad_errores.jpeg")
 
 # 2. b) Gráficas de resultados prepost sin EEG ####
 #   2. b.i) Emparejamiento emocion ####
