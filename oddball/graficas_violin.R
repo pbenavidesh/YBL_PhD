@@ -210,7 +210,10 @@ df_medias_errores %>%
   scale_fill_manual(values= colores_prepost, name="") +
   theme(strip.background = element_blank(),
         strip.placement = "outside") +
-  point(width = 0.5) + tema + mediana + prom(width = 0.5)
+  point(width = 0.5) + tema + mediana + prom(width = 0.5) +
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)
+
+guardar("./oddball/oddball_errores.jpeg")
 
 # 2. a) Limpieza de datos prepost sin eeg ####
 
