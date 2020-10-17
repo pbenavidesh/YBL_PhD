@@ -264,6 +264,32 @@ eeg_medias_id <- eeg %>%
           mem_id_RC=mean(Memoria_identidad_RC)*100,
           mem_id_TR=mean(Memoria_identidad_TR,na.rm = T))
 
+eeg_errores <- eeg %>% 
+  pivot_longer(
+    cols      = starts_with("Tipo"),
+    names_to  = "Tarea",
+    values_to = "Tipo_error"
+  ) %>% 
+  select(-c(matches("[Comisión] | [Omisión]"))) %>% 
+  mutate(
+    Tarea   = str_replace(Tarea, "Tipo ", ""),
+    Emoción = case_when(
+      str_detect(Tarea, "identidad") ~ "N/A",
+      str_starts(Tarea, "emp")       ~ as.character(emocion.emp),
+      TRUE                           ~ as.character(emocion.mem)
+      ) %>% as_factor()
+  )
+
+eeg_errores_medias <-  eeg_errores %>% 
+  group_by(pre.post, Grupo, Tarea, Emoción,
+           Niño, Tipo_error) %>% 
+  summarise(
+    n = n()
+  ) %>% 
+  mutate(
+    pct = n / sum(n) * 100
+  )
+
 # 2. b) Gráficas de resultados prepost sin EEG ####
 #   2. b.i) Emparejamiento emocion ####
 gg_emp <- ggplot(data = eeg_medias_emp) +
