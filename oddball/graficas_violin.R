@@ -111,7 +111,12 @@ df_medias <- df %>%
                              levels = c("Identidad-Pre",
                                         "Emoción-Pre",
                                         "Identidad-Post",
-                                        "Emoción-Post")))
+                                        "Emoción-Post"))) %>% 
+  unite(col = "Act_part", Actividad:Participante, remove = FALSE) %>% 
+  mutate(Act_part = as_factor(Act_part))
+
+# df_medias %>% 
+#   unite(col = "Act_part", Actividad:Participante, remove = FALSE)
 
 df_medias_errores <- df %>% 
   group_by(pre.post, Grupo, Actividad, 
@@ -158,7 +163,8 @@ guardar("./oddball/oddball_TR.jpeg")
 
 gg + g + geom_boxplot() +  aes(y = T_reaccion_ms) +
   ylab("ms")+
-  point(width = 0.75) + tema + prom(width = 0.75)
+  point(width = 0.75) + tema + prom(width = 0.75) +
+  geom_line(aes(group = Act_part))
 
 guardar("./oddball/oddball_box_TR.jpeg")
 
@@ -240,29 +246,65 @@ eeg <- eeg %>%
                                        'Tristeza',
                                        'Enojo'))
          )
+###
 
-eeg_medias_emp <- eeg %>% 
-  group_by(pre.post,Grupo,emocion.emp,Niño) %>%
-  summarise(emp_em_RC = mean(Emparejamiento_emocion_RC)*100, 
-        emp_em_TR= mean(Emparejamiento_emocion_TR, na.rm = T),
-        mem_em_RC=mean(Memoria_emocion_RC)*100,
-        mem_em_TR=mean(Memoria_emocion_TR,na.rm = T),
-        emp_id_RC=mean(Emparejamiento_identidad_RC)*100,
-        emp_id_TR=mean(Emparejamiento_identidad_TR,na.rm = T),
-        mem_id_RC=mean(Memoria_identidad_RC)*100,
-        mem_id_TR=mean(Memoria_identidad_TR,na.rm = T)) 
+eeg_medias <- eeg %>% 
+  select(Niño:Edad, pre.post, contains("TR"), contains("RC"), 
+         emocion.emp, emocion.mem) %>%
+  pivot_longer(
+    cols = c(ends_with("RC"), ends_with("TR"))
+  ) %>% 
+  separate(name, into = c("Tarea", "Condición", "Variable")) %>% 
+  mutate(
+    Emoción = case_when(
+      Condición == "identidad"  ~ "Identidad",
+      Tarea == "Emparejamiento" ~ as.character(emocion.emp),
+      TRUE                      ~ as.character(emocion.mem)
+    ) %>% factor(levels = c("Identidad", "Alegría", "Tristeza", "Enojo"))
+  ) %>% 
+  select(-emocion.emp,-emocion.mem) %>% 
+  group_by(pre.post, Grupo, Tarea, Condición, 
+           Emoción, Variable, Niño) %>% 
+  summarise(
+    value   = mean(value, na.rm = TRUE),
+    .groups = "drop_last"
+  ) %>% 
+  mutate(value = if_else(Variable == "RC", value * 100, value))
 
-eeg_medias_mem <- eeg %>% 
-  group_by(pre.post,Grupo,emocion.mem,Niño) %>%
-  summarise(mem_em_RC=mean(Memoria_emocion_RC)*100,
-            mem_em_TR=mean(Memoria_emocion_TR,na.rm = T))
 
-eeg_medias_id <- eeg %>% 
-  group_by(pre.post,Grupo,Niño) %>%
-  summarise(emp_id_RC=mean(Emparejamiento_identidad_RC)*100,
-          emp_id_TR=mean(Emparejamiento_identidad_TR,na.rm=T),
-          mem_id_RC=mean(Memoria_identidad_RC)*100,
-          mem_id_TR=mean(Memoria_identidad_TR,na.rm = T))
+
+eeg_plots <- function(tarea = c("Emparejamiento", "Memoria"), 
+                      variable = c("TR","RC"),
+                      grafico = c("violin", "boxplot"),
+                      condición = c("emocion", "identidad")){
+  plot_type <- c(violin = geom_split_violin(), 
+                 boxplot = geom_boxplot())
+  
+  p <- eeg_medias %>% 
+    filter(
+      Tarea == tarea,
+      Variable == variable,
+      Condición %in% condición
+    ) %>% 
+    ggplot(aes(x = Emoción, y = value, fill = pre.post)) +
+    facet_wrap(~ Grupo, strip.position = "bottom") +
+    xlab("") + theme_classic() + 
+    scale_fill_manual(values=colores_prepost,
+                      name="") +
+    scale_color_manual(values=colores_prepost,
+                       name="") +
+    theme(strip.background = element_blank(),
+          strip.placement = "outside") +
+    g + plot_type[grafico] +
+    point() + tema + mediana + prom()
+  
+  
+  if(variable == "TR"){
+    p + ylab("s") + scale_y_continuous(breaks = seq(1,5, by = 1))
+  } else{
+    p + ylab("%")
+  }
+}
 
 # Errores
 
@@ -276,10 +318,11 @@ eeg_errores <- eeg %>%
   mutate(
     Tarea   = str_replace(Tarea, "Tipo ", ""),
     Emoción = case_when(
-      str_detect(Tarea, "identidad") ~ "N/A",
+      str_detect(Tarea, "identidad") ~ "Identidad",
       str_starts(Tarea, "emp")       ~ as.character(emocion.emp),
       TRUE                           ~ as.character(emocion.mem)
-      ) %>% factor(levels = c("Alegría", "Tristeza", "Enojo", "N/A"))
+      ) %>% 
+      factor(levels = c("Identidad", "Alegría", "Tristeza", "Enojo"))
   )
 
 eeg_errores_medias <-  eeg_errores %>% 
@@ -290,13 +333,58 @@ eeg_errores_medias <-  eeg_errores %>%
   ) %>% 
   mutate(
     pct = n / sum(n) * 100
-  )
+  ) %>% 
+  separate(Tarea, into = c("Tipo_tarea", "Condición"), remove = FALSE,
+           sep = " ")
 
-# Gráficas
+# Gráficas con ambas condiciones en una sola
 
-eeg_errores_emo_plot <- function(tarea){
-  eeg_errores_medias %>% 
-    filter(Tipo_error != "Acierto",
+eeg_errores_plot <- function(tipo_error = c("Comisión", "Omisión"), 
+                             tipo_tarea){
+  p <- eeg_errores_medias %>% 
+    filter(Tipo_error %in% tipo_error,
+           Tipo_tarea == tipo_tarea) %>%
+    ggplot(aes(x = Emoción, y = pct, fill = pre.post)) +
+    facet_grid(Tipo_error ~ Grupo, switch = "both") +
+    xlab("") + theme_classic() + ylab("%") +
+    geom_split_violin(size = 0.6) + g +
+    scale_fill_manual(values= colores_prepost, name="") +
+    theme(strip.background = element_blank(),
+          strip.placement = "outside") +
+    point(width = 0.5) + tema + mediana + prom(width = 0.5) +
+    annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)
+  
+  if(length(tipo_error) == 1){
+    p + theme(strip.text.y = element_blank())
+  } else{
+    p
+  }
+}
+
+eeg_errores_plot(tipo_tarea = "emp")
+guardar("./pre post sin eeg/emp_errores.jpeg")
+
+eeg_errores_plot(tipo_tarea = "mem")
+guardar("./pre post sin eeg/mem_errores.jpeg")
+
+eeg_errores_plot(tipo_tarea = "emp", tipo_error = "Comisión")
+guardar("./pre post sin eeg/emp_comision.jpeg")
+
+eeg_errores_plot(tipo_tarea = "emp", tipo_error = "Omisión")
+guardar("./pre post sin eeg/emp_omision.jpeg")
+
+eeg_errores_plot(tipo_tarea = "mem", tipo_error = "Comisión")
+guardar("./pre post sin eeg/mem_comision.jpeg")
+
+eeg_errores_plot(tipo_tarea = "mem", tipo_error = "Omisión")
+guardar("./pre post sin eeg/mem_omision.jpeg")
+
+# Gráficas separadas por condición
+ 
+eeg_errores_emo_plot <- function(tipo_error = c("Comisión", "Omisión"),
+                                 tarea){
+  p <- eeg_errores_medias %>% 
+    filter(Tipo_error %in% tipo_error,
            Tarea == tarea) %>%
     ggplot(aes(x = Emoción, y = pct, fill = pre.post)) +
     facet_grid(Tipo_error ~ Grupo, switch = "both") +
@@ -307,11 +395,18 @@ eeg_errores_emo_plot <- function(tarea){
           strip.placement = "outside") +
     point(width = 0.5) + tema + mediana + prom(width = 0.5) +
     annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)
+  
+  if(length(tipo_error) == 1){
+    p + theme(strip.text.y = element_blank())
+  } else{
+    p
+  }
 }
 
-eeg_errores_id_plot <- function(tarea){
-  eeg_errores_medias %>% 
-    filter(Tipo_error != "Acierto",
+eeg_errores_id_plot <- function(tipo_error = c("Comisión", "Omisión"),
+                                tarea){
+  p <- eeg_errores_medias %>% 
+    filter(Tipo_error %in% tipo_error,
            Tarea == tarea) %>%
     ggplot(aes(x = Grupo, y = pct, fill = pre.post)) +
     facet_grid(vars(Tipo_error), switch = "both") +
@@ -322,159 +417,77 @@ eeg_errores_id_plot <- function(tarea){
           strip.placement = "outside") +
     point(width = 0.5) + tema + mediana + prom(width = 0.5) +
     annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)
+  
+  if(length(tipo_error) == 1){
+    p + theme(strip.text.y = element_blank())
+  } else{
+    p
+  }
 }
 # Emoción
-eeg_errores_emo_plot("emp emoción")
+eeg_errores_emo_plot(tarea = "emp emoción")
 guardar("./pre post sin eeg/emp_emocion_errores.jpeg")
-eeg_errores_emo_plot("mem emoción")
+
+eeg_errores_emo_plot(tarea = "mem emoción")
 guardar("./pre post sin eeg/mem_emocion_errores.jpeg")
 
+eeg_errores_emo_plot(tarea = "emp emoción", tipo_error = "Comisión")
+guardar("./pre post sin eeg/emp_emocion_comision.jpeg")
+
+eeg_errores_emo_plot(tarea = "emp emoción", tipo_error = "Omisión")
+guardar("./pre post sin eeg/emp_emocion_omision.jpeg")
+
+eeg_errores_emo_plot(tarea = "mem emoción", tipo_error = "Comisión")
+guardar("./pre post sin eeg/mem_emocion_comision.jpeg")
+
+eeg_errores_emo_plot(tarea = "mem emoción", tipo_error = "Omisión")
+guardar("./pre post sin eeg/mem_emocion_omision.jpeg")
+
+
 # Identidad
-eeg_errores_id_plot("emp identidad")
+eeg_errores_id_plot(tarea = "emp identidad")
 guardar("./pre post sin eeg/emp_identidad_errores.jpeg")
-eeg_errores_id_plot("mem identidad")
+
+eeg_errores_id_plot(tarea = "mem identidad")
 guardar("./pre post sin eeg/mem_identidad_errores.jpeg")
+
+eeg_errores_id_plot(tarea = "emp identidad", tipo_error = "Comisión")
+guardar("./pre post sin eeg/emp_identidad_comision.jpeg")
+
+eeg_errores_id_plot(tarea = "emp identidad", tipo_error = "Omisión")
+guardar("./pre post sin eeg/emp_identidad_omision.jpeg")
+
+eeg_errores_id_plot(tarea = "mem identidad", tipo_error = "Comisión")
+guardar("./pre post sin eeg/mem_identidad_comision.jpeg")
+
+eeg_errores_id_plot(tarea = "mem identidad", tipo_error = "Omisión")
+guardar("./pre post sin eeg/mem_identidad_omision.jpeg")
+
 
 # 2. b) Gráficas de resultados prepost sin EEG ####
 #   2. b.i) Emparejamiento emocion ####
-gg_emp <- ggplot(data = eeg_medias_emp) +
-  aes(x = emocion.emp, fill = pre.post)+ 
-  facet_wrap(~Grupo, strip.position = "bottom") +
-  # scale_fill_discrete(name = "") +
-  xlab("") + theme_classic()+ 
-  scale_fill_manual(values=colores_prepost,
-                    name="")+
-  scale_color_manual(values=colores_prepost,
-                     name="")+
-  theme(strip.background = element_blank(),
-        strip.placement = "outside")
-
 #     2. b.i-a) Tiempos de reacción ####
-gg_emp + g + geom_split_violin()+  aes(y = emp_em_TR) + 
-  ylab("s")+ point() + tema + mediana + prom() +
-  scale_y_continuous( breaks = seq(1,5, by = 1))
-guardar("./pre post sin eeg/emp_em_TR.jpeg")
 
-# boxplot
-gg_emp + g + geom_boxplot()+ aes(y = emp_em_TR) +
-  ylab("s")+ point(width = 0.75) + tema + prom(width = 0.75) +
-  scale_y_continuous( breaks = seq(1,5, by = 1))
-guardar("./pre post sin eeg/box_emp_em_TR.jpeg")
+eeg_plots(tarea = "Emparejamiento", variable = "TR", grafico = "violin")
+guardar("./pre post sin eeg/emp_TR.jpeg")
 
 #     2. b.i-b) Respuestas correctas ####
-gg_emp + g + geom_split_violin() +  aes(y = emp_em_RC) +
-  ylab("%") + point() + tema + mediana + prom()
-  
-  
-guardar("./pre post sin eeg/emp_em_RC.jpeg")
 
-# boxplot
-gg_emp + g + geom_boxplot() +  aes(y = emp_em_RC) +
-  ylab("%") + point() + tema + prom()
-  
-guardar("./pre post sin eeg/box_emp_em_RC.jpeg")
+eeg_plots(tarea = "Emparejamiento", variable = "RC", grafico = "violin")
+guardar("./pre post sin eeg/emp_RC.jpeg")
 
 #   2. b.ii) Memoria emoción ####
-gg_mem <- ggplot(data = eeg_medias_mem) +
-  aes(x = emocion.mem, fill = pre.post)+ 
-  facet_wrap(~Grupo, strip.position = "bottom") +
-  xlab("") + theme_classic()+ 
-  scale_fill_manual(values= colores_prepost,
-                    name="")+
-  scale_color_manual(values= colores_prepost,
-                     name="")+
-  theme(strip.background = element_blank(),
-        strip.placement = "outside")
-
 #     2. b.ii-a) Tiempos de reacción ####
-gg_mem + g + geom_split_violin() + aes(y = mem_em_TR) +
-  ylab("s")+ point() + tema + mediana + prom() +
-  scale_y_continuous( breaks = seq(0,2, by = 0.5))
-  
-guardar("./pre post sin eeg/mem_em_TR.jpeg")
 
-gg_mem + g + geom_boxplot() + aes(y = mem_em_TR) +
-  ylab("s")+ point(width = 0.75) + tema + prom(width = 0.75) +
-  scale_y_continuous( breaks = seq(0,2, by = 0.5))
-
-guardar("./pre post sin eeg/box_mem_em_TR.jpeg")
+eeg_plots(tarea = "Memoria", variable = "TR", grafico = "violin")
+guardar("./pre post sin eeg/mem_TR.jpeg")
 
 #     2. b.ii-b) Respuestas correctas ####
-gg_mem + g + geom_split_violin() + aes(y = mem_em_RC) +
-  ylab("%") + point() + tema + mediana + prom()
-  
-guardar("./pre post sin eeg/mem_em_RC.jpeg")
 
-gg_mem + g + geom_boxplot() + aes(y = mem_em_RC) +
-  ylab("%") + point(0.75) + tema + prom(0.75)
-  
-guardar("./pre post sin eeg/box_mem_em_RC.jpeg")
+eeg_plots(tarea = "Memoria", variable = "RC", grafico = "violin")
+guardar("./pre post sin eeg/mem_RC.jpeg")
 
-#   2. b.iii) Emparejamiento identidad ####
-gg_id <- ggplot(data = eeg_medias_id) +
-  aes(x = Grupo, fill = pre.post)+ 
-  xlab("") + theme_classic()+ 
-  scale_fill_manual(values= colores_prepost,
-                    name="")+
-  scale_color_manual(values= colores_prepost,
-                     name="")
 
-#     2. b.iii-a) Emparejamiento ####
-# Tiempos de reacción
-gg_id + g + geom_split_violin() +  aes(y = emp_id_TR) + 
-  ylab("s")+ point() + tema + mediana + prom()
-  
-guardar("./pre post sin eeg/emp_id_TR.jpeg")
-
-# boxplot
-gg_id + g + geom_boxplot() +  aes(y = emp_id_TR) + 
-  ylab("s")+ point(0.75) + tema + prom(0.75) 
-  
-guardar("./pre post sin eeg/box_emp_id_TR.jpeg")
-
-# Respuestas correctas
-gg_id + g + geom_split_violin() +  aes(y = emp_id_RC) +
-  ylab("%") + point() + tema + mediana + prom() +
-  scale_y_continuous( breaks = seq(0,100, by = 25))
-  # coord_cartesian(ylim = c(10,100))
-  
-guardar("./pre post sin eeg/emp_id_RC.jpeg")
-
-gg_id + g + geom_boxplot() +  aes(y = emp_id_RC) +
-  ylab("%") + point(0.75) + tema + prom(0.75) +
-  scale_y_continuous( breaks = seq(0,100, by = 25))
-  
-guardar("./pre post sin eeg/box_emp_id_RC.jpeg")
-
-#     2. b.iii-b) Memoria ####
-# Tiempos de reacción
-gg_id + g + geom_split_violin() + aes(y = mem_id_TR) +
-  ylab("s")+ point() + tema + mediana + prom() +
-  scale_y_continuous( breaks = seq(0,2, by = 0.5))+
-  coord_cartesian(ylim = c(0.25,1.5))
-guardar("./pre post sin eeg/mem_id_TR.jpeg")
-
-gg_id + g + geom_boxplot() + aes(y = mem_id_TR) +
-  ylab("s")+ point(0.75) + tema + prom(0.75) + 
-  scale_y_continuous( breaks = seq(0,2, by = 0.5))+
-  coord_cartesian(ylim = c(0.25,1.5))
-  
-guardar("./pre post sin eeg/box_mem_id_TR.jpeg")
-
-# Respuestas correctas
-gg_id + g + geom_split_violin() + aes(y = mem_id_RC) +
-  ylab("%") + 
-  point() + tema + mediana + prom() +
-  scale_y_continuous( breaks = seq(0,100, by = 25))
-
-guardar("./pre post sin eeg/mem_id_RC.jpeg")
-
-# boxplot
-gg_id + g + geom_boxplot() + aes(y = mem_id_RC) +
-  ylab("%") + point(0.75) + tema + prom(0.75) +
-  scale_y_continuous( breaks = seq(0,100, by = 25))
-
-guardar("./pre post sin eeg/box_mem_id_RC.jpeg")
 
 # 3. a) Limpieza de datos películas y SSIS ####
 # Base de datos de entrenamiento emoción
