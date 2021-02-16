@@ -11,6 +11,7 @@
 library("shiny")
 library("shinydashboard")
 library("shinythemes")
+library("shinyWidgets")
 library("tidyverse")
 library("plotly")
 library("latex2exp")
@@ -24,6 +25,8 @@ source("scripts/findpeaks.R") # function to find local peaks
 source("scripts/geom_split_violin.R")
 source("scripts/latevolts_auc_tidy.R",
        encoding = "UTF-8") # data preprocessing for AUC
+source("scripts/graficas_pre_post_sin_eeg.R",
+       encoding = "UTF-8") # plots for pre-post without EEG
 
 # load data ---------------------------------------------------------------
 
@@ -74,6 +77,7 @@ ui <- fluidPage( theme = shinytheme("cerulean"),
                  titlePanel("Entrenamiento en emoción Pre-Post"),
                  
                  tabsetPanel(
+                     # * tabPanel PREs ----
                      tabPanel("PREs",
                               sidebarLayout(
                                   sidebarPanel(
@@ -128,6 +132,7 @@ ui <- fluidPage( theme = shinytheme("cerulean"),
                                           )
                               )
                      ),
+                     # * tabPanel AUC ----
                      tabPanel("Area bajo la curva Pz",
                               sidebarLayout(
                                   sidebarPanel(
@@ -156,6 +161,7 @@ ui <- fluidPage( theme = shinytheme("cerulean"),
                      )
                      )
                      ),
+                     # * tabPanel Amp. y lat. PREs ----
                      tabPanel("Amplitudes y latencias PREs",
                               sidebarLayout(
                                   
@@ -191,7 +197,29 @@ ui <- fluidPage( theme = shinytheme("cerulean"),
                                       plotOutput("latevolts")
                                   )
                               ) 
-                              )
+                            ),
+                     # * tabPanel Pre-post sin EEG ----
+                     tabPanel(
+                         "Pre-Post sin EEG",
+                         navlistPanel(
+                             tabPanel(
+                                 "TR y RC",
+                                 dropdownButton(
+                                     tags$h4("Configuración de la gráfica"),
+                                     
+                                     circle  = TRUE,
+                                     status  = "danger",
+                                     icon    = icon("gear"),
+                                     width   = "300px",
+                                     tooltip = tooltipOptions(title = "Da clic para configurar la gráfica")
+                                     
+                                 )
+                             ),
+                             tabPanel(
+                                 "Errores",
+                             )
+                         )
+                     )
                  )
                  
                  
