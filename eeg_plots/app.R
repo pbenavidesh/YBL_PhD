@@ -81,18 +81,53 @@ ui <- fluidPage( theme = shinytheme("cerulean"),
                      tabPanel("PREs",
                               sidebarLayout(
                                   sidebarPanel(
-                                      selectInput(inputId = "cond",
-                                                  "Condición: ",
-                                                  c("Identidad", "Sexo",
-                                                    "Alegría","Tristeza",
-                                                    "Enojo")),
-                                      selectInput(inputId = "elec",
-                                                  "Electrodo: ",
-                                                  c("Fz","Cz","Pz","T5","T6")),
+                                      pickerInput(
+                                          inputId  = "cond",
+                                          label    = "Condición: ",
+                                          choices  = c("Identidad", "Sexo",
+                                                      "Alegría","Tristeza",
+                                                      "Enojo"),
+                                          selected = "Identidad",
+                                          options  = list(
+                                              `actions-box` = TRUE,
+                                              size = 10,
+                                              `selected-text-format` = "count > 3"
+                                              
+                                          ),
+                                          multiple = TRUE
+                                      ),
+                                      pickerInput(
+                                          inputId  = "elec",
+                                          label    = "Electrodo: ",
+                                          choices  = c("Fz","Cz","Pz","T5","T6"),
+                                          selected = "Pz",
+                                          options  = list(
+                                              `actions-box` = TRUE,
+                                              size = 10,
+                                              `selected-text-format` = "count > 3"
+                                              
+                                          ),
+                                          multiple = TRUE
+                                      ),
+                                      # selectInput(inputId = "cond",
+                                      #             "Condición: ",
+                                      #             c("Identidad", "Sexo",
+                                      #               "Alegría","Tristeza",
+                                      #               "Enojo")),
+                                      # selectInput(inputId = "elec",
+                                      #             "Electrodo: ",
+                                      #             c("Fz","Cz","Pz","T5","T6")),
+                                      
+                                      materialSwitch(
+                                          inputId = "grupos",
+                                          label   = "Separar por grupos",
+                                          status  = "primary",
+                                          value   = TRUE 
+                                      ),
                                       radioButtons(
-                                          inputId="radio",
-                                          label="Selección de participantes:",
-                                          choices=list(
+                                          inputId = "radio",
+                                          label = "Selección de participantes:",
+                                          choices = list(
                                               "Todos",
                                               "Selección manual"),
                                           selected = "Todos"
@@ -243,15 +278,48 @@ server <- function(input, output) {
     
     gg_df <- reactive({
         
-        df_norm %>%
-            filter(Sujeto %in% Data()) %>% 
-            group_by(t, Grupo,Condición,
-                     Evaluación, Electrodo) %>% 
-            summarise(Amplitud = mean(value)) %>%
-            filter(Condición == input$cond, 
-                   Electrodo == input$elec) %>% 
-            mutate(t_eval = str_c(t, Evaluación, 
-                                  sep = "_"))
+        df <- df_norm %>%
+            filter(Sujeto %in% Data()) 
+        
+        if (length(input$cond) != 1 | length(input$elec) != 1){
+            df <- df %>% 
+                filter(Condición %in% input$cond,
+                       Electrodo %in% input$elec) %>% 
+                {if(input$grupos){
+                    group_by(., t, Grupo, Evaluación)
+                } else {
+                    group_by(., t, Evaluación)
+                }} %>% 
+                summarise(Amplitud = mean(value)) %>% 
+                mutate(t_eval = str_c(t, Evaluación, 
+                                      sep = "_"))
+            
+        } else {
+            df <- df %>% 
+                {if (input$grupos){
+                    group_by(., t, Grupo, Condición,
+                             Evaluación, Electrodo)
+                } else{
+                    group_by(., t, Condición,
+                             Evaluación, Electrodo)
+                }} %>% 
+                summarise(Amplitud = mean(value)) %>% 
+                filter(Condición %in% input$cond,
+                       Electrodo %in% input$elec) %>% 
+                mutate(t_eval = str_c(t, Evaluación, 
+                                      sep = "_"))
+                
+        }
+        df
+        
+        # df %>% 
+        #     summarise(Amplitud = mean(value)) %>%
+        #     filter(Condición %in% input$cond, 
+        #            Electrodo %in% input$elec) %>% 
+        #     filter(Condición == input$cond,
+        #            Electrodo == input$elec) %>%
+        #     mutate(t_eval = str_c(t, Evaluación, 
+        #                           sep = "_"))
     })
     
     gg_df_auc <- reactive({
@@ -259,7 +327,7 @@ server <- function(input, output) {
         df_norm %>%
             filter(Sujeto == input$partic_auc,
                    Electrodo == "Pz") %>% 
-            group_by(t, Grupo,Condición,
+            group_by(t, Grupo, Condición,
                      Evaluación) %>% 
             summarise(Amplitud = mean(value)) %>%
             filter(Condición == input$cond_auc) %>% 
@@ -370,15 +438,21 @@ server <- function(input, output) {
         
         if(n_distinct(gg_df()$Grupo) > 1){
             
-            ggplotly(gg + geom_line(size = 1) +
-                         facet_wrap(~ Grupo, nrow = 1)+
-                         theme(strip.background = element_blank(),
-                               strip.placement = "outside")) %>% 
-                config(mathjax = 'cdn')
+            if(input$grupos == TRUE){
+                ggplotly(gg + geom_line(size = 1) +
+                             facet_wrap(~ Grupo, nrow = 1)+
+                             theme(strip.background = element_blank(),
+                                   strip.placement = "outside")) %>% 
+                    config(mathjax = 'cdn')
+            } else {
+                ggplotly(gg + geom_line(size = 1)) %>% 
+                    config(mathjax = 'cdn')
+            }
+            
         } else {
             ggplotly( if(input$vis_picos == FALSE){ gg +
-                                  geom_line(size = 1)} else { gg +
-                                      geom_line(size = 1) + 
+                                  geom_line(size = 1)} 
+                      else { gg + geom_line(size = 1) + 
                                           geom_text(data = picos_maxmin(),
                                                     aes(x = t, y = Amplitud,
                                                         size = 10,
