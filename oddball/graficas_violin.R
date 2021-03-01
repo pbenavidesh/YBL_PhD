@@ -3,7 +3,7 @@
 # pkgs --------------------------------------------------------------------
 
 library(easypackages)
-libraries("tidyverse","ggpubr","latex2exp","scales", "gghighlight")
+libraries("tidyverse","ggpubr","latex2exp","scales", "gghighlight", "patchwork")
 
 source("./oddball/geom_split_violin.R")
 
@@ -685,7 +685,7 @@ summary(lm_fit2$fit)
 
 eeg_errores_medias_wide <- eeg_errores_medias %>% 
   select(-n) %>%
-  drop_na() %>% 
+  drop_na() %>%
   pivot_wider(
     names_from = Tipo_error, 
     values_from = pct
@@ -737,10 +737,10 @@ art_eeg_tbl <- eeg_medias_wide %>%
   ) %>% 
   mutate(
     Variable = str_replace_all(
-      Variable, c("RC" = "Correct Answers (%)", "Comisión" = "Errors (%)",
+      Variable, c("RC" = "Correct Responses (%)", "Comisión" = "Errors (%)",
                   "TR" = "Response Times (s)")
     ),
-    Variable = factor(Variable, levels = c("Correct Answers (%)", 
+    Variable = factor(Variable, levels = c("Correct Responses (%)", 
                                            "Errors (%)", "Omisión", 
                                            "Response Times (s)"))
   )
@@ -755,7 +755,11 @@ art_eeg_plot <- function(variable,
                          tarea){
   
   plot_type <- c(violin = geom_split_violin(size = 0.6), 
-                 boxplot = geom_boxplot())
+                 boxplot = geom_boxplot(
+                   outlier.color = "black",
+                   outlier.shape = 1,
+                   outlier.size  = 0.7
+                 ))
   
   p <- art_eeg_tbl %>% 
     filter(Variable %in% variable,
@@ -769,10 +773,15 @@ art_eeg_plot <- function(variable,
           strip.placement = "outside") +
     mediana +
     annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf) +
-    theme(text = element_text(family = "serif",
-                              size = 8, color = "black"),
+    theme(text = element_text(family = "sans",
+                              size = 12, color = "black"),
           legend.justification = "top",
-          plot.title = element_text(hjust = 0.5))
+          plot.title = element_text(hjust = 0.5),
+          axis.ticks.x = element_blank()) +
+    stat_compare_means(method = "wilcox.test",
+                       paired = TRUE,
+                       label = "p.signif",
+                       hide.ns = TRUE)
   
   if(length(variable) == 1){
     p + theme(strip.text.y = element_blank())
@@ -780,17 +789,16 @@ art_eeg_plot <- function(variable,
     p
   }
   
-  if(tarea == "Emparejamiento"){
-    p + ggtitle("Matching Tasks")
-  } else{
-    p + ggtitle("Memory Tasks")
-  }
+  # if(tarea == "Emparejamiento"){
+  #   p + ggtitle("Matching Tasks")
+  # } else{
+  #   p + ggtitle("Memory Tasks")
+  # }
 }
 
 
-
 art_eeg_plot(
-  variable = c("Correct Answers (%)",
+  variable = c("Correct Responses (%)",
                "Errors (%)",
                "Response Times (s)"), 
   tarea    = "Emparejamiento", 
@@ -801,12 +809,107 @@ art_eeg_plot(
 #         units = "mm")
 
 art_eeg_plot(
-  variable = c("Correct Answers (%)",
+  variable = c("Correct Responses (%)",
                "Errors (%)",
                "Response Times (s)"), 
   tarea    = "Memoria", 
   grafico  = "boxplot"
 )
+
+# COMPARE MEANS
+
+art_eeg_tbl %>% 
+  compare_means(
+    formula =  valor ~ pre.post, 
+    paired  = TRUE,
+    group.by = c("Variable", "Grupo", "Tarea", 
+                 "Condición", "Emoción")
+  ) %>% 
+  filter(p.signif != "ns") %>% view()
+
+# Acomodo rectangular de gráficas
+art_eeg_plot2 <- function(variable, 
+                          grafico = c("violin", "boxplot"),
+                          tarea){
+  
+  plot_type <- c(violin = geom_split_violin(size = 0.6), 
+                 boxplot = geom_boxplot(
+                   outlier.color = "black",
+                   outlier.shape = 1,
+                   outlier.size  = 0.7
+                 ))
+  
+  p <- art_eeg_tbl %>% 
+    filter(Variable %in% variable,
+           Tarea == tarea) %>%
+    ggplot(aes(x = Emoción, y = valor, fill = pre.post)) +
+    facet_grid(Variable ~ Grupo, switch = "both", scales = "free_y") +
+    xlab("") + theme_classic() + ylab("") +
+    plot_type[grafico] + g +
+    scale_fill_manual(values= art_colores_prepost, name="") +
+    theme(strip.background = element_blank(),
+          strip.placement = "outside") +
+    mediana +
+    annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf) +
+    theme(text = element_text(family = "sans",
+                              size = 12, color = "black"),
+          legend.justification = "top",
+          plot.title = element_text(hjust = 0.5),
+          axis.ticks.x = element_blank()) +
+    stat_compare_means(method = "wilcox.test",
+                       paired = TRUE,
+                       label = "p.signif",
+                       hide.ns = TRUE)
+  
+  if(length(variable) == 1){
+    p + theme(strip.text.y = element_blank())
+  } else{
+    p
+  }
+  
+  # if(tarea == "Emparejamiento"){
+  #   p + ggtitle("Matching Tasks")
+  # } else{
+  #   p + ggtitle("Memory Tasks")
+  # }
+}
+
+p1 <- art_eeg_plot2(
+  variable = c("Correct Responses (%)",
+               "Errors (%)"), 
+  tarea    = "Emparejamiento", 
+  grafico  = "boxplot"
+) + theme(legend.position = "none")
+
+p2 <- art_eeg_plot2(
+  variable = "Response Times (s)", 
+  tarea    = "Emparejamiento", 
+  grafico  = "boxplot"
+) + 
+  theme(axis.title.x = element_blank(),
+        axis.text.x  = element_blank(),
+        strip.text.x = element_blank())
+
+p1 | (p2/plot_spacer())
+
+
+p1 <- art_eeg_plot2(
+  variable = c("Correct Responses (%)",
+               "Errors (%)"), 
+  tarea    = "Memoria", 
+  grafico  = "boxplot"
+) + theme(legend.position = "none")
+
+p2 <- art_eeg_plot2(
+  variable = "Response Times (s)", 
+  tarea    = "Memoria", 
+  grafico  = "boxplot"
+) + 
+  theme(axis.title.x = element_blank(),
+        axis.text.x  = element_blank(),
+        strip.text.x = element_blank())
+
+p1 | (p2/plot_spacer())
 
 # 3. a) Limpieza de datos películas y SSIS ####
 # Base de datos de entrenamiento emoción
