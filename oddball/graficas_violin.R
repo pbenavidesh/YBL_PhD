@@ -368,50 +368,50 @@ eeg_errores_plot <- function(tipo_error = c("Comisión", "Omisión"),
 }
 
 eeg_errores_plot(tipo_tarea = "emp", grafico = "violin")
-guardar("./pre post sin eeg/emp_errores.jpeg")
+# guardar("./pre post sin eeg/emp_errores.jpeg")
 
 eeg_errores_plot(tipo_tarea = "mem", grafico = "violin")
-guardar("./pre post sin eeg/mem_errores.jpeg")
+# guardar("./pre post sin eeg/mem_errores.jpeg")
 
 eeg_errores_plot(tipo_tarea = "emp", tipo_error = "Comisión", 
                  grafico = "violin")
-guardar("./pre post sin eeg/emp_comision.jpeg")
+# guardar("./pre post sin eeg/emp_comision.jpeg")
 
 eeg_errores_plot(tipo_tarea = "emp", tipo_error = "Omisión", 
                  grafico = "violin")
-guardar("./pre post sin eeg/emp_omision.jpeg")
+# guardar("./pre post sin eeg/emp_omision.jpeg")
 
 eeg_errores_plot(tipo_tarea = "mem", tipo_error = "Comisión",
                  grafico = "violin")
-guardar("./pre post sin eeg/mem_comision.jpeg")
+# guardar("./pre post sin eeg/mem_comision.jpeg")
 
 eeg_errores_plot(tipo_tarea = "mem", tipo_error = "Omisión",
                  grafico = "violin")
-guardar("./pre post sin eeg/mem_omision.jpeg")
+# guardar("./pre post sin eeg/mem_omision.jpeg")
 
 # boxplot
 
 eeg_errores_plot(tipo_tarea = "emp", grafico = "boxplot")
-guardar("./pre post sin eeg/emp_errores_box.jpeg")
+# guardar("./pre post sin eeg/emp_errores_box.jpeg")
 
 eeg_errores_plot(tipo_tarea = "mem", grafico = "boxplot")
-guardar("./pre post sin eeg/mem_errores_box.jpeg")
+# guardar("./pre post sin eeg/mem_errores_box.jpeg")
 
 eeg_errores_plot(tipo_tarea = "emp", tipo_error = "Comisión", 
                  grafico = "boxplot")
-guardar("./pre post sin eeg/emp_comision_box.jpeg")
+# guardar("./pre post sin eeg/emp_comision_box.jpeg")
 
 eeg_errores_plot(tipo_tarea = "emp", tipo_error = "Omisión", 
                  grafico = "boxplot")
-guardar("./pre post sin eeg/emp_omision_box.jpeg")
+# guardar("./pre post sin eeg/emp_omision_box.jpeg")
 
 eeg_errores_plot(tipo_tarea = "mem", tipo_error = "Comisión",
                  grafico = "boxplot")
-guardar("./pre post sin eeg/mem_comision_box.jpeg")
+# guardar("./pre post sin eeg/mem_comision_box.jpeg")
 
 eeg_errores_plot(tipo_tarea = "mem", tipo_error = "Omisión",
                  grafico = "boxplot")
-guardar("./pre post sin eeg/mem_omision_box.jpeg")
+# guardar("./pre post sin eeg/mem_omision_box.jpeg")
 
 
 
@@ -462,42 +462,42 @@ eeg_errores_id_plot <- function(tipo_error = c("Comisión", "Omisión"),
 }
 # Emoción
 eeg_errores_emo_plot(tarea = "emp emoción")
-guardar("./pre post sin eeg/emp_emocion_errores.jpeg")
+# guardar("./pre post sin eeg/emp_emocion_errores.jpeg")
 
 eeg_errores_emo_plot(tarea = "mem emoción")
-guardar("./pre post sin eeg/mem_emocion_errores.jpeg")
+# guardar("./pre post sin eeg/mem_emocion_errores.jpeg")
 
 eeg_errores_emo_plot(tarea = "emp emoción", tipo_error = "Comisión")
-guardar("./pre post sin eeg/emp_emocion_comision.jpeg")
+# guardar("./pre post sin eeg/emp_emocion_comision.jpeg")
 
 eeg_errores_emo_plot(tarea = "emp emoción", tipo_error = "Omisión")
-guardar("./pre post sin eeg/emp_emocion_omision.jpeg")
+# guardar("./pre post sin eeg/emp_emocion_omision.jpeg")
 
 eeg_errores_emo_plot(tarea = "mem emoción", tipo_error = "Comisión")
-guardar("./pre post sin eeg/mem_emocion_comision.jpeg")
+# guardar("./pre post sin eeg/mem_emocion_comision.jpeg")
 
 eeg_errores_emo_plot(tarea = "mem emoción", tipo_error = "Omisión")
-guardar("./pre post sin eeg/mem_emocion_omision.jpeg")
+# guardar("./pre post sin eeg/mem_emocion_omision.jpeg")
 
 
 # Identidad
 eeg_errores_id_plot(tarea = "emp identidad")
-guardar("./pre post sin eeg/emp_identidad_errores.jpeg")
+# guardar("./pre post sin eeg/emp_identidad_errores.jpeg")
 
 eeg_errores_id_plot(tarea = "mem identidad")
-guardar("./pre post sin eeg/mem_identidad_errores.jpeg")
+# guardar("./pre post sin eeg/mem_identidad_errores.jpeg")
 
 eeg_errores_id_plot(tarea = "emp identidad", tipo_error = "Comisión")
-guardar("./pre post sin eeg/emp_identidad_comision.jpeg")
+# guardar("./pre post sin eeg/emp_identidad_comision.jpeg")
 
 eeg_errores_id_plot(tarea = "emp identidad", tipo_error = "Omisión")
-guardar("./pre post sin eeg/emp_identidad_omision.jpeg")
+# guardar("./pre post sin eeg/emp_identidad_omision.jpeg")
 
 eeg_errores_id_plot(tarea = "mem identidad", tipo_error = "Comisión")
-guardar("./pre post sin eeg/mem_identidad_comision.jpeg")
+# guardar("./pre post sin eeg/mem_identidad_comision.jpeg")
 
 eeg_errores_id_plot(tarea = "mem identidad", tipo_error = "Omisión")
-guardar("./pre post sin eeg/mem_identidad_omision.jpeg")
+# guardar("./pre post sin eeg/mem_identidad_omision.jpeg")
 
 
 # 2. b) Gráficas de resultados prepost sin EEG ####
@@ -505,10 +505,10 @@ guardar("./pre post sin eeg/mem_identidad_omision.jpeg")
 #     2. b.i-a) Tiempos de reacción ####
 
 eeg_plots(tarea = "Emparejamiento", variable = "TR", grafico = "violin")
-guardar("./pre post sin eeg/emp_TR.jpeg")
+# guardar("./pre post sin eeg/emp_TR.jpeg")
 
 eeg_plots(tarea = "Emparejamiento", variable = "TR", grafico = "boxplot")
-guardar("./pre post sin eeg/emp_TR_box.jpeg")
+# guardar("./pre post sin eeg/emp_TR_box.jpeg")
 
 #     2. b.i-b) Respuestas correctas ####
 
@@ -861,11 +861,13 @@ art_eeg_plot2 <- function(variable,
                        label = "p.signif",
                        hide.ns = TRUE)
   
-  if(length(variable) == 1){
-    p + theme(strip.text.y = element_blank())
-  } else{
-    p
-  }
+  p
+  
+  # if(length(variable) == 1){
+  #   p + theme(strip.text.y = element_blank())
+  # } else{
+  #   p
+  # }
   
   # if(tarea == "Emparejamiento"){
   #   p + ggtitle("Matching Tasks")
@@ -879,7 +881,7 @@ p1 <- art_eeg_plot2(
                "Errors (%)"), 
   tarea    = "Emparejamiento", 
   grafico  = "boxplot"
-) + theme(legend.position = "none")
+) +  theme(legend.position = "none")
 
 p2 <- art_eeg_plot2(
   variable = "Response Times (s)", 
@@ -890,7 +892,7 @@ p2 <- art_eeg_plot2(
         axis.text.x  = element_blank(),
         strip.text.x = element_blank())
 
-p1 | (p2/plot_spacer())
+p1 | (p2/plot_spacer()) 
 
 
 p1 <- art_eeg_plot2(
@@ -906,7 +908,7 @@ p2 <- art_eeg_plot2(
   grafico  = "boxplot"
 ) + 
   theme(axis.title.x = element_blank(),
-        axis.text.x  = element_blank(),
+        axis.text.x  = eleme nt_blank(),
         strip.text.x = element_blank())
 
 p1 | (p2/plot_spacer())
